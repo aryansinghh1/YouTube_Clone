@@ -2,23 +2,39 @@ import { useEffect, useState } from "react";
 
 export default function App() {
   const [videos, setVideos] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    fetch(
-      "https://youtube-v2.p.rapidapi.com/trending/?lang=en&country=in&section=Gaming",
-      {
-        method: "GET",
-        headers: {
-          "x-rapidapi-key": import.meta.env.VITE_RAPIDAPI_KEY,
-          "x-rapidapi-host": "youtube-v2.p.rapidapi.com",
-        },
-      },
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("API RESPONSE:", data);
-        setVideos(data.videos || []);
-        
-      });
+    async function fetchVideos() {
+      try {
+        const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=US&maxResults=12&key=${import.meta.env.VITE_YOUTUBE_API_KEY}`
+        );
+
+        const data = await response.json();
+        console.log("Youtube Api Data",data)
+
+        if (!data.items) {
+          console.error("Invalid API response:", data);
+          return;
+        }
+
+        const formattedVideos = data.items.map((video) => ({
+          id: video.id,
+          title: video.snippet.title,
+          channel: video.snippet.channelTitle,
+          thumbnail: video.snippet.thumbnails.high.url,
+        }));
+
+        setVideos(formattedVideos);
+      } catch (error) {
+        console.error("API Error:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchVideos();
   }, []);
   
 }
