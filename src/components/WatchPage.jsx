@@ -2,6 +2,21 @@ import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import SuggestedVideo from "./SuggestedVideo";
 
+// Utility functions for localStorage history management
+const addToHistory = (videoData) => {
+  try {
+    const history = JSON.parse(localStorage.getItem('watchHistory')) || [];
+    // Remove if video already exists to avoid duplicates
+    const filtered = history.filter(v => v.id !== videoData.id);
+    // Add the new video at the beginning
+    const updated = [videoData, ...filtered];
+    // Keep only the last 50 videos
+    localStorage.setItem('watchHistory', JSON.stringify(updated.slice(0, 50)));
+  } catch (err) {
+    console.error('Error saving to history:', err);
+  }
+};
+
 export default function WatchPage() {
   const { id } = useParams();
   const [video, setVideo] = useState(null);
@@ -17,7 +32,16 @@ export default function WatchPage() {
         );
         const data = await res.json();
         if (data.items && data.items.length) {
-          setVideo(data.items[0].snippet);
+          const videoData = data.items[0].snippet;
+          setVideo(videoData);
+          // Save to localStorage history
+          addToHistory({
+            id: id,
+            title: videoData.title,
+            channel: videoData.channelTitle,
+            thumbnail: videoData.thumbnails?.high?.url || videoData.thumbnails?.default?.url,
+            watchedAt: new Date().toISOString()
+          });
         }
       } catch (err) {
         console.error(err);
