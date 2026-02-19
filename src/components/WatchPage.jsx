@@ -64,8 +64,8 @@ export default function WatchPage() {
         );
         const data = await res.json();
         if (data.items && data.items.length) {
-          const formatted = data.items
-            .filter((it) => it.id && (it.id.videoId || it.id.channelId || it.id.playlistId))
+          const baseVideos = data.items
+            .filter((it) => it.id && it.id.videoId)
             .map((it) => ({
               id: it.id.videoId,
               title: it.snippet.title,
@@ -75,13 +75,36 @@ export default function WatchPage() {
             .filter(Boolean);
 
           // If no valid video ids found, fall back to popular videos below
-          if (formatted.length) {
+          if (baseVideos.length) {
+            // Fetch additional details (duration, views)
+            const videoIds = baseVideos.map(v => v.id).join(',');
+            const detailsResponse = await fetch(
+              `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id=${videoIds}&key=${import.meta.env.VITE_YOUTUBE_API_KEY}`
+            );
+            const detailsData = await detailsResponse.json();
+
+            const detailsMap = {};
+            if (detailsData.items) {
+              detailsData.items.forEach(item => {
+                detailsMap[item.id] = {
+                  duration: item.contentDetails?.duration,
+                  views: item.statistics?.viewCount,
+                };
+              });
+            }
+
+            const formatted = baseVideos.map(video => ({
+              ...video,
+              duration: detailsMap[video.id]?.duration,
+              views: detailsMap[video.id]?.views,
+            }));
+
             setSuggested(formatted);
           } else {
             console.warn('No valid related videos returned, falling back to popular');
             // fallback to popular
             const pop = await fetch(
-              `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=US&maxResults=8&key=${import.meta.env.VITE_YOUTUBE_API_KEY}`
+              `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&chart=mostPopular&regionCode=US&maxResults=8&key=${import.meta.env.VITE_YOUTUBE_API_KEY}`
             );
             const popData = await pop.json();
             const popFormatted = (popData.items || [])
@@ -90,6 +113,8 @@ export default function WatchPage() {
                 title: v.snippet.title,
                 channel: v.snippet.channelTitle,
                 thumbnail: v.snippet.thumbnails?.medium?.url || v.snippet.thumbnails?.default?.url,
+                duration: v.contentDetails?.duration,
+                views: v.statistics?.viewCount,
               }))
               .filter((s) => s.id !== id);
             setSuggested(popFormatted);
@@ -97,7 +122,7 @@ export default function WatchPage() {
         } else {
           console.warn('Related search returned no items, using popular fallback');
           const pop = await fetch(
-            `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=US&maxResults=8&key=${import.meta.env.VITE_YOUTUBE_API_KEY}`
+            `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&chart=mostPopular&regionCode=US&maxResults=8&key=${import.meta.env.VITE_YOUTUBE_API_KEY}`
           );
           const popData = await pop.json();
           const popFormatted = (popData.items || [])
@@ -106,6 +131,8 @@ export default function WatchPage() {
               title: v.snippet.title,
               channel: v.snippet.channelTitle,
               thumbnail: v.snippet.thumbnails?.medium?.url || v.snippet.thumbnails?.default?.url,
+              duration: v.contentDetails?.duration,
+              views: v.statistics?.viewCount,
             }))
             .filter((s) => s.id !== id);
           setSuggested(popFormatted);
@@ -115,7 +142,7 @@ export default function WatchPage() {
         // on error, try a simple popular fallback
         try {
           const pop = await fetch(
-            `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=US&maxResults=8&key=${import.meta.env.VITE_YOUTUBE_API_KEY}`
+            `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&chart=mostPopular&regionCode=US&maxResults=8&key=${import.meta.env.VITE_YOUTUBE_API_KEY}`
           );
           const popData = await pop.json();
           const popFormatted = (popData.items || [])
@@ -124,6 +151,8 @@ export default function WatchPage() {
               title: v.snippet.title,
               channel: v.snippet.channelTitle,
               thumbnail: v.snippet.thumbnails?.medium?.url || v.snippet.thumbnails?.default?.url,
+              duration: v.contentDetails?.duration,
+              views: v.statistics?.viewCount,
             }))
             .filter((s) => s.id !== id);
           setSuggested(popFormatted);

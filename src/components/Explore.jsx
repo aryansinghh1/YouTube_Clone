@@ -11,7 +11,7 @@ export default function Explore() {
       setLoading(true);
       try {
         const res = await fetch(
-          `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=US&maxResults=24&key=${import.meta.env.VITE_YOUTUBE_API_KEY}`
+          `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&chart=mostPopular&regionCode=US&maxResults=24&key=${import.meta.env.VITE_YOUTUBE_API_KEY}`
         );
         const data = await res.json();
         if (data.items) {
@@ -20,6 +20,9 @@ export default function Explore() {
             title: v.snippet.title,
             channel: v.snippet.channelTitle,
             thumbnail: v.snippet.thumbnails.high.url,
+            duration: v.contentDetails?.duration,
+            views: v.statistics?.viewCount,
+            uploadedAt: v.snippet.publishedAt,
           }));
           setVideos(formatted);
         }

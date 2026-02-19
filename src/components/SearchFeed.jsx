@@ -39,11 +39,39 @@ export default function SearchFeed() {
           return;
         }
 
-        const formattedVideos = data.items.map((item) => ({
+        // First, map the search results
+        const baseVideos = data.items.map((item) => ({
           id: item.id.videoId,
           title: item.snippet.title,
           channel: item.snippet.channelTitle,
           thumbnail: item.snippet.thumbnails.high.url,
+          publishedAt: item.snippet.publishedAt,
+        }));
+
+        // Now fetch additional details (duration, views) from the videos endpoint
+        const videoIds = baseVideos.map(v => v.id).join(',');
+        const detailsResponse = await fetch(
+          `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id=${videoIds}&key=${import.meta.env.VITE_YOUTUBE_API_KEY}`
+        );
+        const detailsData = await detailsResponse.json();
+
+        // Create a map of video details by ID
+        const detailsMap = {};
+        if (detailsData.items) {
+          detailsData.items.forEach(item => {
+            detailsMap[item.id] = {
+              duration: item.contentDetails?.duration,
+              views: item.statistics?.viewCount,
+            };
+          });
+        }
+
+        // Merge the details with base videos
+        const formattedVideos = baseVideos.map(video => ({
+          ...video,
+          duration: detailsMap[video.id]?.duration,
+          views: detailsMap[video.id]?.views,
+          uploadedAt: video.publishedAt,
         }));
 
         setVideos(formattedVideos);
@@ -76,11 +104,36 @@ export default function SearchFeed() {
         return;
       }
 
-      const formattedVideos = data.items.map((item) => ({
+      const baseVideos = data.items.map((item) => ({
         id: item.id.videoId,
         title: item.snippet.title,
         channel: item.snippet.channelTitle,
         thumbnail: item.snippet.thumbnails.high.url,
+        publishedAt: item.snippet.publishedAt,
+      }));
+
+      // Fetch additional details (duration, views)
+      const videoIds = baseVideos.map(v => v.id).join(',');
+      const detailsResponse = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id=${videoIds}&key=${import.meta.env.VITE_YOUTUBE_API_KEY}`
+      );
+      const detailsData = await detailsResponse.json();
+
+      const detailsMap = {};
+      if (detailsData.items) {
+        detailsData.items.forEach(item => {
+          detailsMap[item.id] = {
+            duration: item.contentDetails?.duration,
+            views: item.statistics?.viewCount,
+          };
+        });
+      }
+
+      const formattedVideos = baseVideos.map(video => ({
+        ...video,
+        duration: detailsMap[video.id]?.duration,
+        views: detailsMap[video.id]?.views,
+        uploadedAt: video.publishedAt,
       }));
 
       setVideos(formattedVideos);

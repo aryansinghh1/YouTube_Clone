@@ -18,7 +18,7 @@ export default function App() {
     try {
       const tokenParam = pageToken ? `&pageToken=${pageToken}` : "";
       const response = await fetch(
-        `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=US&maxResults=12${tokenParam}&key=${import.meta.env.VITE_YOUTUBE_API_KEY}`
+        `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&chart=mostPopular&regionCode=US&maxResults=12${tokenParam}&key=${import.meta.env.VITE_YOUTUBE_API_KEY}`
       );
 
       const data = await response.json();
@@ -33,6 +33,9 @@ export default function App() {
         title: video.snippet.title,
         channel: video.snippet.channelTitle,
         thumbnail: video.snippet.thumbnails.high.url,
+        duration: video.contentDetails?.duration,
+        views: video.statistics?.viewCount,
+        uploadedAt: video.snippet.publishedAt,
       }));
 
       if (pageToken) setVideos((prev) => [...prev, ...formattedVideos]);
